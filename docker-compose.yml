@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+  scraping:
+    build: 
+      context: ./scraping
+    command: ./node_modules/.bin/ts-node src/index.ts
+    environment:
+      - SCREENSHOT_PATH=/app/picture
+    volumes: 
+      - './scraping:/app/'
+    working_dir: /app
+  scraping-init:
+    image: node:10.15.3-alpine
+    command: yarn add puppeteer ts-node typescript @types/node @types/puppeteer
+    volumes: 
+      - './scraping:/app/'
+    environment:
+      - SCREENSHOT_PATH=/app/picture
+    working_dir: /app
+
+volumes: 
+  yarn_cache:
