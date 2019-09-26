@@ -1,0 +1,1 @@
+http://bemaniwiki.com/index.php?beatmania%20IIDX%2022%20PENDUAL/%B5%EC%B6%CA%A5%EA%A5%B9%A5%C8
