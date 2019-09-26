@@ -12,11 +12,9 @@ services:
     working_dir: /app
   scraping-init:
     image: node:10.15.3-alpine
-    command: yarn add puppeteer ts-node typescript @types/node @types/puppeteer
+    command: yarn
     volumes: 
       - './scraping:/app/'
-    environment:
-      - SCREENSHOT_PATH=/app/picture
     working_dir: /app
 
 volumes: 
