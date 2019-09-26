@@ -73,7 +73,7 @@ namespace ColllectionUtil {
         });
 
         const titles = await pup.page.$$eval('a[title*=旧曲リスト]', (links: Element[]) => {
-            links.map(link => link.getAttribute('title'));
+            return links.map(link => link.getAttribute('title'));
         });
 
         console.log(titles);
