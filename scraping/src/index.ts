@@ -1,86 +1,112 @@
 import Puppeteer from './puppeteer';
 import { File } from './io';
 
-(async () => {
-    let pup: Puppeteer;
-
-    try {
+class CrawlWorker {
+    urls: string[]
+    
+    public async run() {
         File.initializeFile();
-    } catch(e) {
-        console.log(e);
-        return;
+        File.writeToCsv([['bpm', 'genre', 'title', 'artist']]);
+
+        this.urls = await this.getWorkUrls();
+
+        this.crawlPage(this.urls.shift());
     }
 
-    try {
-        pup = await new Puppeteer().initialize();
+    public async getWorkUrls(): Promise<string[]> {
+        let pup: Puppeteer;
 
-        const works_url = 'http://bemaniwiki.com/index.php?%B2%E1%B5%EE%BA%EE%C9%CA/beatmania%20IIDX';
+        try {
+            pup = await new Puppeteer().initialize();
 
-        await pup.page.goto(works_url);
+            const works_url = 'http://bemaniwiki.com/index.php?%B2%E1%B5%EE%BA%EE%C9%CA/beatmania%20IIDX';
 
-        /**
-         * await pup.page.$$eval('a[title*=旧曲リスト]', (links: Element[]) => {
-         *     links.forEach(link => {
-         *         link.click()
-         *     });
-         * });
-         */
+            await pup.page.goto(works_url);
 
-        pup.page.click('a[title*=旧曲リスト]');
+            const links: string[] = await pup.page.$$eval('a[title*=旧曲リスト]', (links: Element[]) => {
+                return links.map(link => link.getAttribute('href'));
+            });
 
-        await pup.page.waitForNavigation({  
-            timeout: 60000, 
-            waitUntil: 'domcontentloaded' 
-        });
+            pup.browser.close();
 
-        await pup.page.screenshot({
-            path: `${process.env.SCREENSHOT_PATH}/test.jpeg`,
-        });
+            return new Promise((resolve) => {
+                resolve(links);
+            });
+        } catch (e) {
+            throw (e.message);
+        } finally {
+            if (pup) {
+                pup.browser.close();
+            }
+        }
+    }
 
-        const contents = await pup.page.$$eval('.ie5', (dataTables: Element[]) => {
-            const enableRows = dataTables.map(dataTable => {
-                const rows = Array.from(dataTable.querySelectorAll('tbody tr'));
-                const count = rows.length;
+    async crawlPage(url: string) {
+        let pup: Puppeteer;
 
-                if (count <= 11) {
-                    return;
-                }
-                
-                const contents = rows.map(row => {
-                    const cells = row.querySelectorAll('td');
-                    const count = cells.length;
+        console.log(`crawl: ${url}`);
 
-                    if (count <= 7) {
+        try {
+            pup = await new Puppeteer().initialize();
+
+            await pup.page.goto(url, { waitUntil: "domcontentloaded" });
+
+            const contents = await pup.page.$$eval('.ie5', (dataTables: Element[]) => {
+                const enableRows = dataTables.map(dataTable => {
+                    const rows = Array.from(dataTable.querySelectorAll('tbody tr'));
+                    const count = rows.length;
+
+                    if (count <= 11) {
                         return;
                     }
 
-                    const contents = []
+                    const contents = rows.map(row => {
+                        const cells = row.querySelectorAll('td');
+                        const count = cells.length;
 
-                    contents.push(cells[count - 4].innerText);
-                    contents.push(cells[count - 3].innerText);
-                    contents.push(cells[count - 2].innerText);
-                    contents.push(cells[count - 1].innerText);
+                        if (count <= 7) {
+                            return;
+                        }
 
-                    return contents;
-                }).filter(e => e);
+                        const contents = []
 
-                return contents.filter(e => e);
+                        contents.push(cells[count - 4].innerText);
+                        contents.push(cells[count - 3].innerText);
+                        contents.push(cells[count - 2].innerText);
+                        contents.push(cells[count - 1].innerText);
+
+                        return contents;
+                    }).filter(e => e);
+
+                    return contents.filter(e => e);
+                });
+
+                return enableRows.filter(e => e);
             });
 
-            return enableRows.filter(e => e);
-        });
+            File.writeToCsv(contents[0]);
+        } catch (e) {
+            console.log(e);
 
-        contents.unshift([['bpm', 'genre', 'title', 'artist']]);
+            if (pup) {
+                pup.browser.close();
+            }
 
-        File.writeToCsv(contents[0]);
-        File.writeToCsv(contents[1]);
+            process.exit(0);
+        } finally {
+            if (pup) {
+                pup.browser.close();
+            }
 
-        pup.browser.close();
-    } catch (e) {
-        if (pup !== null) {
-            pup.browser.close();
+            if (this.urls.length) {
+                this.crawlPage(this.urls.shift())
+            } else {
+                process.exit(0);
+            }
         }
-
-        console.log(e);
     }
-})();
+}
+
+const worker = new CrawlWorker();
+
+worker.run();
