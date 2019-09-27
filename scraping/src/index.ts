@@ -1,65 +1,15 @@
-import * as puppeteer from 'puppeteer'
-
-class Puppeteer {
-    public browser: puppeteer.Browser;
-    public page: puppeteer.Page;
-
-    private launchArg: any = {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ]
-    };
-
-    public async initialize() {
-        return new Promise<Puppeteer>(async (resolve, reject) => {
-            try {
-                this.browser = await puppeteer.launch(this.launchArg);
-                this.page = await this.browser.newPage();
-            } catch (e) {
-                reject(e);
-            }
-
-            resolve(this);
-        });
-    }
-}
-
-namespace ColllectionUtil {
-    export const filterDataTable = (dataTables: Element[]): Element[] => {
-        const result = dataTables.filter(dataTable => {
-            dataTable.querySelectorAll('tbody tr').length > 12;
-        });
-
-        return result;
-    }
-
-    export const filterRows = (tableRows: Element[]): Element[] => {
-        // enable rows
-        let result: Element[] = []
-
-        tableRows.forEach(row => {
-            let cell = row.querySelectorAll('td');
-
-            if (cell.length < 7) {
-                return;
-            }
-
-            cell = row.querySelectorAll('tdtd[style*=background-color]');
-
-            if (cell.length >= 7) {
-                return;
-            }
-
-            result.push(row)
-        })
-
-        return result
-    }
-}
+import Puppeteer from './puppeteer';
+import { File } from './io';
 
 (async () => {
-    let pup: Puppeteer
+    let pup: Puppeteer;
+
+    try {
+        File.initializeFile();
+    } catch(e) {
+        console.log(e);
+        return;
+    }
 
     try {
         pup = await new Puppeteer().initialize();
@@ -68,40 +18,63 @@ namespace ColllectionUtil {
 
         await pup.page.goto(works_url);
 
+        /**
+         * await pup.page.$$eval('a[title*=旧曲リスト]', (links: Element[]) => {
+         *     links.forEach(link => {
+         *         link.click()
+         *     });
+         * });
+         */
+
+        pup.page.click('a[title*=旧曲リスト]');
+
+        await pup.page.waitForNavigation({  
+            timeout: 60000, 
+            waitUntil: 'domcontentloaded' 
+        });
+
         await pup.page.screenshot({
             path: `${process.env.SCREENSHOT_PATH}/test.jpeg`,
         });
 
-        const titles = await pup.page.$$eval('a[title*=旧曲リスト]', (links: Element[]) => {
-            return links.map(link => link.getAttribute('title'));
+        const contents = await pup.page.$$eval('.ie5', (dataTables: Element[]) => {
+            const enableRows = dataTables.map(dataTable => {
+                const rows = Array.from(dataTable.querySelectorAll('tbody tr'));
+                const count = rows.length;
+
+                if (count <= 11) {
+                    return;
+                }
+                
+                const contents = rows.map(row => {
+                    const cells = row.querySelectorAll('td');
+                    const count = cells.length;
+
+                    if (count <= 7) {
+                        return;
+                    }
+
+                    const contents = []
+
+                    contents.push(cells[count - 4].innerText);
+                    contents.push(cells[count - 3].innerText);
+                    contents.push(cells[count - 2].innerText);
+                    contents.push(cells[count - 1].innerText);
+
+                    return contents;
+                }).filter(e => e);
+
+                return contents.filter(e => e);
+            });
+
+            return enableRows.filter(e => e);
         });
 
-        console.log(titles);
-        
-        // DOMElementの属性取得など、DOMを触る場合はEvalを利用しないと
-        // pup.browser.close()が走りエラーになる.
-        //
-        // メソッドを選択する場合は、注意が必要.
-        // 
-        // (await pup.page.$$('a[title*=旧曲リスト]')).map(async link => {
-        //     const title: string = await (await link.getProperty('title')).jsonValue()
-        //     console.log(title)
-        // })
+        contents.unshift([['bpm', 'genre', 'title', 'artist']]);
 
-        /**
-         * $$('a[title*=旧曲リスト]').map(e => e.title) // これで把握、これをクリックして回る
-         * 
-         * $$('.ie5')[0].querySelectorAll('tbody')[0]
-         * 
-         * const dataTables = $$('.ie5').filter(e => 
-         *         e.querySelectorAll('tbody tr').length > 12)
-         * 
-         * dataTables.forEach(dataTable => {
-         *     const rows = dataTable.querySelectorAll('tbody tr')
-         * 
-         *     rows.rows.querySelectorAll('td')
-         * })
-         */
+        File.writeToCsv(contents[0]);
+        File.writeToCsv(contents[1]);
+
         pup.browser.close();
     } catch (e) {
         if (pup !== null) {
