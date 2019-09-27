@@ -1,6 +1,6 @@
 import * as puppeteer from 'puppeteer';
 
-class Puppeteer {
+export default class Puppeteer {
     public browser: puppeteer.Browser;
     public page: puppeteer.Page;
 
@@ -24,5 +24,3 @@ class Puppeteer {
         });
     }
 }
-
-export default Puppeteer;
