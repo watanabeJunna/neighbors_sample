@@ -9,9 +9,9 @@ export namespace File {
     }
 
     export const writeToCsv = (collection: string[][], path: string = defpath): void => {
-        const contents: string = collection.map<string>(c => {
+        const contents: string = collection.map(c => {
             return Object.values(c).join(',') + '\n';
-        }).join('');
+        }).join('')
 
         appendFile(path, contents, 'utf8', (e: Error) => {
             if (e) {
