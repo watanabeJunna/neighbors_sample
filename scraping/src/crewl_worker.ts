@@ -1,12 +1,23 @@
 import Puppeteer from './puppeteer';
-import { File } from './io';
+import { Writer } from './io';
 
+/**
+ * @see https://github.com/GoogleChrome/puppeteer/issues/594
+ */
 export default class CrawlWorker {
-    urls: string[]
+    urls: string[];
+    outfile: string;
+    writer: Writer;
+
+    constructor(outfile: string = process.env.DIST_FILEPATH) {
+        this.outfile = outfile;
+        this.writer = new Writer(outfile);
+    }
 
     public async run() {
-        File.initializeFile();
-        File.writeToCsv([['bpm', 'genre', 'title', 'artist']]);
+        this.writer.initializeFile();
+
+        this.writer.writeToCsv([['bpm', 'genre', 'title', 'artist']]);
 
         this.urls = await this.getWorkUrls();
 
@@ -84,7 +95,7 @@ export default class CrawlWorker {
                 return enableRows.filter(e => e);
             });
 
-            File.writeToCsv(contents[0]);
+            this.writer.writeToCsv(contents[0]);
         } catch (e) {
             console.log(e);
 

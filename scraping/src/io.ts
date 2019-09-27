@@ -1,19 +1,22 @@
 import { writeFileSync, appendFile } from 'fs';
 
-export namespace File {
-    // default path
-    export const defpath = process.env.DIST_FILEPATH;
+export class Writer {
+    outfile: string;
 
-    export const initializeFile = (path: string = defpath): void => {
-        writeFileSync(path, '', 'utf8');
+    constructor(outfile: string) {
+        this.outfile = outfile;
     }
 
-    export const writeToCsv = (collection: string[][], path: string = defpath): void => {
+    public initializeFile = (): void => {
+        writeFileSync(this.outfile, '', 'utf8');
+    }
+
+    public writeToCsv = (collection: string[][]): void => {
         const contents: string = collection.map(c => {
             return Object.values(c).join(',') + '\n';
         }).join('')
 
-        appendFile(path, contents, 'utf8', (e: Error) => {
+        appendFile(this.outfile, contents, 'utf8', (e: Error) => {
             if (e) {
                 console.log(e);
             }
