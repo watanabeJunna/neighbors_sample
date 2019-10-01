@@ -16,7 +16,6 @@ export default class CrawlWorker {
 
     public async run() {
         this.writer.initializeFile();
-
         this.writer.writeToCsv([['bpm', 'genre', 'title', 'artist']]);
 
         this.urls = await this.getWorkUrls();
@@ -37,6 +36,10 @@ export default class CrawlWorker {
             const links: string[] = await pup.page.$$eval('a[title*=旧曲リスト]', (links: Element[]) => {
                 return links.map(link => link.getAttribute('href'));
             });
+
+            // links.concat(await pup.page.$$eval('a[title*=新曲リスト]', (links: Element[]) => {
+            //     return links.map(link => link.getAttribute('href'));
+            // }));
 
             pup.browser.close();
 
@@ -81,10 +84,12 @@ export default class CrawlWorker {
 
                         const contents = []
 
-                        contents.push(cells[count - 4].innerText);
-                        contents.push(cells[count - 3].innerText);
-                        contents.push(cells[count - 2].innerText);
-                        contents.push(cells[count - 1].innerText);
+                        // {-1: "ARTIST", -2: "TITLE", -3: "GENRE", -4: "BPM"}
+
+                        contents.unshift(cells[count - 1].innerText);
+                        contents.unshift(cells[count - 2].innerText);
+                        contents.unshift(cells[count - 3].innerText);
+                        contents.unshift(cells[count - 4].innerText);
 
                         return contents;
                     }).filter(e => e);
